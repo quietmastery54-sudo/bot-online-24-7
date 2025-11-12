@@ -1,18 +1,16 @@
 {
   "name": "minecraft-aternos-bot",
-  "version": "3.1.0",
-  "description": "Minecraft Bot for Aternos with improved connection handling",
+  "version": "3.2.0",
+  "description": "Minecraft Bot for Aternos Server 1.21.4",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js",
-    "test": "node -e \"require('./bot.js')\""
+    "dev": "nodemon bot.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.0",
     "mineflayer-pathfinder": "^2.4.3",
-    "express": "^4.18.2",
-    "minecraft-server-ping": "^1.1.0"
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
@@ -21,7 +19,7 @@
     "minecraft",
     "bot",
     "aternos",
-    "keepalive"
+    "1.21.4"
   ],
   "author": "Your Name",
   "license": "MIT",
