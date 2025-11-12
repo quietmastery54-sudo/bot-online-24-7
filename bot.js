@@ -1,13 +1,14 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const express = require('express');
+const http = require('http');
 
 // إعدادات السيرفر الأساسية
 const SERVER_CONFIG = {
     host: 'server55540.aternos.me',
     port: 19306,
     username: 'Bot Online 24/7',
-    version: '1.21.8',  // تم التحديث للإصدار 1.21.8
+    version: '1.21.8',
     auth: 'offline'
 };
 
@@ -17,9 +18,8 @@ const TIMING_CONFIG = {
     movementInterval: 30000,           // كل 30 ثانية
     reconnectDelay: 5000,              // 5 ثواني قبل إعادة الاتصال
     afkCheckInterval: 60000,           // كل دقيقة للتحقق من النشاط
-    pingInterval: 30000,               // كل 30 ثانية لإرسال Ping
-    healthCheckInterval: 30000,        // كل 30 ثانية للتحقق من صحة البوت
-    chatInterval: 60000               // كل دقيقة لإرسال رسالة في الشات
+    selfPingInterval: 300000,          // كل 5 دقائق لإرسال Ping ذاتي
+    healthCheckInterval: 30000         // كل 30 ثانية للتحقق من صحة البوت
 };
 
 class AternosKeepAliveBot {
@@ -28,11 +28,12 @@ class AternosKeepAliveBot {
         this.isConnected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 15;
-        this.lastPingTime = Date.now();
         this.uptime = Date.now();
         this.serverOnline = false;
+        this.app = express();
+        this.server = null;
         
-        // إعداد خادم ويب للـ Ping
+        // إعداد خادم ويب للـ Ping والمراقبة
         this.setupWebServer();
         this.initBot();
     }
@@ -41,17 +42,15 @@ class AternosKeepAliveBot {
      * إعداد خادم ويب للـ Ping والمراقبة
      */
     setupWebServer() {
-        const app = express();
         const port = process.env.PORT || 3000;
 
         // middleware
-        app.use(express.json());
+        this.app.use(express.json());
 
         // صفحة الرئيسية لعرض حالة البوت
-        app.get('/', (req, res) => {
+        this.app.get('/', (req, res) => {
             const status = this.isConnected ? '🟢 متصل' : '🔴 غير متصل';
             const uptime = this.formatUptime(Date.now() - this.uptime);
-            const lastPing = this.formatUptime(Date.now() - this.lastPingTime);
             
             res.json({
                 status: 'Bot Online 24/7 - يعمل',
@@ -64,7 +63,6 @@ class AternosKeepAliveBot {
                 },
                 system: {
                     uptime: uptime,
-                    lastPing: lastPing,
                     reconnectAttempts: this.reconnectAttempts,
                     memory: process.memoryUsage()
                 },
@@ -73,40 +71,36 @@ class AternosKeepAliveBot {
         });
 
         // نقطة نهاية للـ Ping
-        app.get('/ping', (req, res) => {
-            this.lastPingTime = Date.now();
+        this.app.get('/ping', (req, res) => {
             res.json({ 
                 status: 'pong', 
                 timestamp: new Date().toISOString(),
                 minecraft: {
                     connected: this.isConnected,
-                    lastActivity: this.lastPingTime,
                     version: SERVER_CONFIG.version
                 }
             });
         });
 
         // نقطة نهاية لصحة البوت
-        app.get('/health', (req, res) => {
+        this.app.get('/health', (req, res) => {
             const healthStatus = this.isConnected ? 'healthy' : 'unhealthy';
             res.json({
                 status: healthStatus,
                 minecraftConnected: this.isConnected,
-                uptime: Date.now() - this.uptime,
-                lastPing: Date.now() - this.lastPingTime,
-                version: SERVER_CONFIG.version
+                uptime: Date.now() - this.uptime
             });
         });
 
         // نقطة نهاية لإعادة تشغيل البوت
-        app.post('/restart', (req, res) => {
+        this.app.post('/restart', (req, res) => {
             res.json({ status: 'restarting', message: 'جاري إعادة تشغيل البوت...' });
             console.log('🔄 طلب إعادة تشغيل عبر HTTP...');
             this.restartBot();
         });
 
         // بدء الخادم
-        app.listen(port, '0.0.0.0', () => {
+        this.server = this.app.listen(port, '0.0.0.0', () => {
             console.log(`🌐 خادم الويب يعمل على المنفذ ${port}`);
             console.log(`📊 يمكنك مراقبة البوت عبر:`);
             console.log(`   → http://localhost:${port}`);
@@ -114,64 +108,106 @@ class AternosKeepAliveBot {
             console.log(`   → http://localhost:${port}/health`);
         });
 
-        // بدء إرسال Ping التلقائي
-        this.startAutoPing();
+        // بدء إرسال Ping الذاتي
+        this.startSelfPinging();
     }
 
     /**
-     * بدء إرسال Ping التلقائي لمنع توقف السيرفر
+     * بدء إرسال Ping الذاتي لمنع توقف السيرفر
      */
-    startAutoPing() {
+    startSelfPinging() {
         // إرسال ping فوري عند البدء
-        this.sendAutoPing();
+        this.selfPing();
         
-        // ثم تكرار كل فترة
+        // ثم تكرار كل 5 دقائق
         setInterval(() => {
-            this.sendAutoPing();
-        }, TIMING_CONFIG.pingInterval);
+            this.selfPing();
+        }, TIMING_CONFIG.selfPingInterval);
 
-        console.log('📡 نظام Ping التلقائي مفعل');
+        console.log('📡 نظام Ping الذاتي مفعل (كل 5 دقائق)');
     }
 
     /**
-     * إرسال Ping إلى الخادم للحفاظ على النشاط
+     * إرسال Ping ذاتي للحفاظ على نشاط السيرفر
      */
-    async sendAutoPing() {
+    async selfPing() {
         try {
             const port = process.env.PORT || 3000;
+            
+            // استخدام الرابط الخارجي إذا كان متوفراً (للمنصات السحابية)
             const baseUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`;
             
-            // استخدام node-fetch أو طريقة بديلة
-            const https = require('https');
-            const url = new URL(`${baseUrl}/ping`);
+            console.log(`📡 جاري إرسال Ping ذاتي إلى: ${baseUrl}`);
             
             const options = {
-                hostname: url.hostname,
-                port: url.port,
-                path: url.pathname,
+                hostname: new URL(baseUrl).hostname,
+                port: new URL(baseUrl).port || (baseUrl.startsWith('https') ? 443 : 80),
+                path: '/ping',
                 method: 'GET',
                 timeout: 10000
             };
             
-            const req = https.request(options, (res) => {
-                this.lastPingTime = Date.now();
-                console.log(`📡 تم إرسال Ping: ${new Date().toLocaleTimeString()}`);
+            // استخدام http أو https حسب الرابط
+            const protocol = baseUrl.startsWith('https') ? require('https') : require('http');
+            
+            const req = protocol.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    console.log(`✅ تم إرسال Ping ذاتي بنجاح: ${new Date().toLocaleTimeString()}`);
+                });
             });
             
             req.on('error', (err) => {
-                console.error('❌ فشل في إرسال Ping:', err.message);
+                console.error('❌ فشل في Ping الذاتي:', err.message);
+                
+                // محاولة بديلة باستخدام localhost
+                if (baseUrl !== `http://localhost:${port}`) {
+                    console.log('🔄 جاري المحاولة باستخدام localhost...');
+                    this.alternativeSelfPing(port);
+                }
             });
             
             req.on('timeout', () => {
-                console.error('⏰ انتهت مهلة Ping');
+                console.error('⏰ انتهت مهلة Ping الذاتي');
                 req.destroy();
             });
             
             req.end();
             
         } catch (error) {
-            console.error('❌ خطأ في نظام Ping:', error.message);
+            console.error('❌ خطأ في نظام Ping الذاتي:', error.message);
         }
+    }
+
+    /**
+     * طريقة بديلة لإرسال Ping الذاتي باستخدام localhost
+     */
+    alternativeSelfPing(port) {
+        const options = {
+            hostname: 'localhost',
+            port: port,
+            path: '/ping',
+            method: 'GET',
+            timeout: 5000
+        };
+
+        const req = http.request(options, (res) => {
+            console.log(`✅ تم إرسال Ping ذاتي (بديل): ${new Date().toLocaleTimeString()}`);
+        });
+
+        req.on('error', (err) => {
+            console.error('❌ فشل في Ping الذاتي البديل:', err.message);
+        });
+
+        req.on('timeout', () => {
+            console.error('⏰ انتهت مهلة Ping الذاتي البديل');
+            req.destroy();
+        });
+
+        req.end();
     }
 
     /**
@@ -226,20 +262,10 @@ class AternosKeepAliveBot {
      * فحص صحة البوت والنظام
      */
     healthCheck() {
-        const now = Date.now();
-        const timeSinceLastPing = now - this.lastPingTime;
-        
         console.log('❤️  فحص صحة النظام:');
         console.log(`   - حالة الاتصال: ${this.isConnected ? '🟢 متصل' : '🔴 غير متصل'}`);
-        console.log(`   - وقت التشغيل: ${this.formatUptime(now - this.uptime)}`);
-        console.log(`   - آخر Ping: ${this.formatUptime(timeSinceLastPing)}`);
+        console.log(`   - وقت التشغيل: ${this.formatUptime(Date.now() - this.uptime)}`);
         console.log(`   - محاولات إعادة الاتصال: ${this.reconnectAttempts}`);
-        
-        // إذا مر وقت طويل بدون ping، أعد إرساله
-        if (timeSinceLastPing > TIMING_CONFIG.pingInterval * 2) {
-            console.log('⚠️  وقت طويل منذ آخر Ping، جاري إعادة الإرسال...');
-            this.sendAutoPing();
-        }
     }
 
     /**
@@ -311,30 +337,6 @@ class AternosKeepAliveBot {
                 const uptime = this.formatUptime(Date.now() - this.uptime);
                 this.bot.chat(`🟢 البوت يعمل منذ: ${uptime}`);
             }
-            
-            if (msg.includes('!help')) {
-                this.bot.chat('الأوامر المتاحة: !ping, !status, !help');
-            }
-        });
-
-        // حدث تغيير الحالة الصحية
-        this.bot.on('health', () => {
-            if (this.bot.food <= 6) {
-                console.log('⚠️ تحذير: الجوع منخفض!');
-                this.bot.chat('/feed');
-            }
-        });
-
-        // حدث عند القتل
-        this.bot.on('death', () => {
-            console.log('💀 البوت مات! جاري الانتظار لإعادة الظهور...');
-            this.bot.chat('لقد مت! جاري إعادة الظهور...');
-        });
-
-        // حدث إعادة الظهور
-        this.bot.on('spawn', () => {
-            console.log('🔁 البوت أعيد ظهوره');
-            this.isConnected = true;
         });
 
         console.log('✅ تم إعداد معالجات الأحداث بنجاح');
@@ -377,13 +379,6 @@ class AternosKeepAliveBot {
             }
         }, TIMING_CONFIG.afkCheckInterval);
 
-        // إرسال رسائل في الشات بشكل دوري
-        setInterval(() => {
-            if (this.isConnected) {
-                this.sendChatMessage();
-            }
-        }, TIMING_CONFIG.chatInterval);
-
         console.log('✅ تم إعداد المهام الدورية بنجاح');
     }
 
@@ -396,9 +391,7 @@ class AternosKeepAliveBot {
             const safeCommands = [
                 '/list',
                 '/time query daytime',
-                '/gamerule doDaylightCycle true',
-                '/say السيرفر نشط!',
-                '/seed'
+                '/gamerule doDaylightCycle true'
             ];
             
             const randomCommand = safeCommands[Math.floor(Math.random() * safeCommands.length)];
@@ -408,27 +401,6 @@ class AternosKeepAliveBot {
             
         } catch (error) {
             console.error('❌ خطأ في إرسال الأمر:', error.message);
-        }
-    }
-
-    /**
-     * إرسال رسالة في الشات
-     */
-    sendChatMessage() {
-        try {
-            const messages = [
-                '...',
-                'السيرفر يعمل بشكل طبيعي 🌟',
-                'نشط ومستقر! ⚡'
-            ];
-            
-            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-            this.bot.chat(randomMsg);
-            
-            console.log(`💬 تم إرسال رسالة: ${randomMsg}`);
-            
-        } catch (error) {
-            console.error('❌ خطأ في إرسال الرسالة:', error.message);
         }
     }
 
@@ -522,6 +494,10 @@ class AternosKeepAliveBot {
         
         if (this.bot && this.isConnected) {
             this.bot.quit();
+        }
+        
+        if (this.server) {
+            this.server.close();
         }
         
         process.exit(0);
