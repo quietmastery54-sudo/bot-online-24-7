@@ -1,7 +1,7 @@
 {
   "name": "minecraft-aternos-bot",
-  "version": "4.0.0",
-  "description": "Minecraft Bot for Aternos Server 1.21.4",
+  "version": "5.0.0",
+  "description": "Minecraft Bot for Aternos Server - Fixed Connection",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -18,8 +18,7 @@
   "keywords": [
     "minecraft",
     "bot",
-    "aternos",
-    "1.21.4"
+    "aternos"
   ],
   "author": "Your Name",
   "license": "MIT",
