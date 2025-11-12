@@ -1,0 +1,33 @@
+{
+  "name": "minecraft-aternos-bot",
+  "version": "3.0.0",
+  "description": "Advanced Minecraft Bot for Aternos Server - Version 1.21.8",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
+    "pm2": "pm2 start ecosystem.config.js",
+    "railway": "node bot.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.3",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "minecraft",
+    "bot",
+    "aternos",
+    "keepalive",
+    "1.21.8",
+    "railway"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
