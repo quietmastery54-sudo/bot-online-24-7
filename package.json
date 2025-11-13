@@ -1,12 +1,11 @@
 {
-  "name": "minecraft-aternos-bot",
-  "version": "3.0.0",
-  "description": "Advanced Minecraft Bot for Aternos Server - Version 1.21.8 with Internal Uptime Ping",
+  "name": "advanced-aternos-bot",
+  "version": "1.0.0",
+  "description": "Advanced Minecraft Bot for Aternos Server with Natural Movements and Uptime Ping",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js",
-    "railway": "node bot.js"
+    "dev": "nodemon bot.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.0",
@@ -20,11 +19,9 @@
     "minecraft",
     "bot",
     "aternos",
-    "keepalive",
     "1.21.8",
-    "railway",
-    "uptime",
-    "ping"
+    "keepalive",
+    "uptime"
   ],
   "author": "Your Name",
   "license": "MIT",
