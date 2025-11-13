@@ -1,11 +1,2 @@
 language = "nodejs"
 run = "npm start"
-
-[nix]
-channel = "stable"
-
-[env]
-PATH = "/home/runner/.config/nvm/versions/node/v18.17.0/bin:$PATH"
-
-[git]
-enableGitHub = false
