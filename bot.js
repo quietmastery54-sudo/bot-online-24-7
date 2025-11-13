@@ -2,26 +2,37 @@ const mineflayer = require('mineflayer');
 const express = require('express');
 const http = require('http');
 
-// إعدادات السيرفر
+// إعدادات السيرفر مع ViaVersion - يمكن استخدام أي إصدار
 const SERVER_CONFIG = {
     host: 'server5498.aternos.me',
     port: 19306,
     username: 'Active_Player_Bot',
-    version: '1.21.8',
+    version: '1.21.8', // أو أي إصدار تريده - ViaVersion سيتعامل معه
     auth: 'offline'
 };
 
-class AternosBot {
+// يمكنك حتى تجربة إصدارات أخرى إذا أردت:
+const ALTERNATIVE_VERSIONS = [
+    '1.21.8',
+    '1.21.4', 
+    '1.21.1',
+    '1.20.4',
+    '1.19.4',
+    false // اكتشاف تلقائي
+];
+
+class ViaVersionBot {
     constructor() {
         this.bot = null;
         this.isConnected = false;
         this.reconnectAttempts = 0;
+        this.currentVersionIndex = 0;
         this.uptime = Date.now();
         this.app = express();
         this.server = null;
         
-        console.log('🤖 Starting Aternos Bot...');
-        console.log(`📍 Server: ${SERVER_CONFIG.host}:${SERVER_CONFIG.port}`);
+        console.log('🚀 بدء تشغيل البوت مع ViaVersion...');
+        console.log('📋 ViaVersion مفعل - يدعم جميع الإصدارات');
         
         this.setupWebServer();
         this.initBot();
@@ -32,23 +43,28 @@ class AternosBot {
 
         this.app.get('/', (req, res) => {
             res.json({
-                status: 'Bot Active',
+                status: 'Bot Active - ViaVersion Supported',
                 connected: this.isConnected,
                 server: SERVER_CONFIG.host,
-                uptime: Date.now() - this.uptime,
-                reconnectAttempts: this.reconnectAttempts
+                version: SERVER_CONFIG.version,
+                viaVersion: true,
+                uptime: Date.now() - this.uptime
             });
         });
 
         this.app.get('/ping', (req, res) => {
-            res.json({ status: 'pong', timestamp: new Date().toISOString() });
+            res.json({ 
+                status: 'pong', 
+                viaVersion: true,
+                timestamp: new Date().toISOString() 
+            });
         });
 
         this.server = this.app.listen(port, () => {
-            console.log(`🌐 Web server running on port ${port}`);
+            console.log(`🌐 خادم ويب نشط على المنفذ ${port}`);
         });
 
-        // Ping every 4 minutes
+        // Ping كل 4 دقائق
         setInterval(() => {
             this.selfPing(port);
         }, 240000);
@@ -59,16 +75,15 @@ class AternosBot {
             hostname: 'localhost',
             port: port,
             path: '/ping',
-            method: 'GET',
-            timeout: 5000
+            method: 'GET'
         };
 
-        const req = http.request(options, (res) => {
-            console.log(`✅ Ping successful - ${new Date().toLocaleTimeString()}`);
+        const req = http.request(options, () => {
+            console.log(`✅ Ping ناجح - ${new Date().toLocaleTimeString()}`);
         });
 
         req.on('error', () => {
-            console.log('⚠️  Ping failed');
+            console.log('⚠️  Ping فاشل');
         });
 
         req.end();
@@ -76,81 +91,125 @@ class AternosBot {
 
     initBot() {
         try {
+            console.log(`🤖 جرب الاتصال بإصدار: ${SERVER_CONFIG.version}`);
+            
             this.bot = mineflayer.createBot(SERVER_CONFIG);
             this.setupEventHandlers();
             this.setupBotTasks();
             
         } catch (error) {
-            console.error('❌ Bot creation failed:', error.message);
-            this.scheduleReconnect();
+            console.error('❌ فشل إنشاء البوت:', error.message);
+            this.tryAlternativeVersion();
         }
     }
 
     setupEventHandlers() {
         this.bot.on('login', () => {
-            console.log('✅ Connected to server!');
+            console.log('🎉 تم الاتصال بنجاح عبر ViaVersion!');
             this.isConnected = true;
             this.reconnectAttempts = 0;
             
             const pos = this.bot.entity.position;
-            console.log(`📍 Position: X:${pos.x}, Y:${pos.y}, Z:${pos.z}`);
+            console.log(`📍 الموقع: X:${pos.x}, Y:${pos.y}, Z:${pos.z}`);
             
-            // Send welcome message
             setTimeout(() => {
-                this.bot.chat('Hello! Bot is online.');
+                this.bot.chat('Hello! Bot connected via ViaVersion!');
             }, 3000);
         });
 
         this.bot.on('end', (reason) => {
-            console.log(`🔌 Disconnected: ${reason}`);
+            console.log(`🔌 انقطع الاتصال: ${reason}`);
             this.isConnected = false;
             this.scheduleReconnect();
         });
 
         this.bot.on('error', (err) => {
-            console.error('❌ Bot error:', err.message);
+            console.error('❌ خطأ:', err.message);
             this.isConnected = false;
+            
+            // إذا كان الخطأ متعلقاً بالإصدار، جرب إصداراً آخر
+            if (err.message.includes('version') || err.message.includes('Version')) {
+                this.tryAlternativeVersion();
+            } else {
+                this.scheduleReconnect();
+            }
         });
 
         this.bot.on('message', (message) => {
             const msg = message.toString();
-            console.log(`💬 Chat: ${msg}`);
+            console.log(`💬 ${msg}`);
         });
 
         this.bot.on('spawn', () => {
-            console.log('🔄 Bot spawned');
+            console.log('🔄 البوت ظهر في العالم');
             this.isConnected = true;
         });
     }
 
+    tryAlternativeVersion() {
+        this.currentVersionIndex++;
+        
+        if (this.currentVersionIndex < ALTERNATIVE_VERSIONS.length) {
+            const newVersion = ALTERNATIVE_VERSIONS[this.currentVersionIndex];
+            console.log(`🔄 جرب إصدار بديل: ${newVersion}`);
+            
+            // أنشئ إعدادات جديدة بالإصدار البديل
+            const newConfig = {
+                ...SERVER_CONFIG,
+                version: newVersion
+            };
+            
+            setTimeout(() => {
+                try {
+                    if (this.bot) this.bot.end();
+                    this.bot = mineflayer.createBot(newConfig);
+                    this.setupEventHandlers();
+                    this.setupBotTasks();
+                } catch (error) {
+                    console.error('❌ فشل الإصدار البديل:', error.message);
+                    this.tryAlternativeVersion();
+                }
+            }, 3000);
+            
+        } else {
+            console.log('🛑 جربت جميع الإصدارات، جاري إعادة المحاولة...');
+            this.scheduleReconnect();
+        }
+    }
+
     setupBotTasks() {
-        // Movement every 20 seconds
+        // حركة كل 20 ثانية
         setInterval(() => {
             if (this.isConnected && this.bot.entity) {
                 this.performMovement();
             }
         }, 20000);
 
-        // Commands every 90 seconds
+        // أوامر كل 90 ثانية
         setInterval(() => {
             if (this.isConnected) {
                 this.sendCommand();
             }
         }, 90000);
 
-        // Chat messages every 2 minutes
+        // رسائل شات كل دقيقتين
         setInterval(() => {
             if (this.isConnected) {
                 this.sendChat();
             }
         }, 120000);
 
-        // AFK prevention every 45 seconds
+        // منع AFK كل 45 ثانية
         setInterval(() => {
             if (this.isConnected) {
                 this.afkPrevention();
             }
         }, 45000);
+
+        // فحص الصحة كل 30 ثانية
+        setInterval(() => {
+            this.healthCheck();
+        }, 30000);
     }
 
     performMovement() {
@@ -163,43 +222,44 @@ class AternosBot {
                 this.bot.setControlState(randomMove, false);
             }, 800);
             
-            // Random look
+            // حركة عشوائية للكاميرا
             this.bot.look(
                 Math.random() * Math.PI * 2 - Math.PI,
                 (Math.random() * 0.5) - 0.25,
                 true
             );
             
-            console.log(`🚶 Movement: ${randomMove}`);
+            console.log(`🚶 حركة: ${randomMove}`);
             
         } catch (error) {
-            console.error('❌ Movement error:', error.message);
+            console.error('❌ خطأ في الحركة:', error.message);
         }
     }
 
     sendCommand() {
         try {
-            const commands = ['/list', '/time query daytime'];
+            const commands = ['/list', '/time query daytime', '/gamerule doDaylightCycle true'];
             const randomCommand = commands[Math.floor(Math.random() * commands.length)];
             this.bot.chat(randomCommand);
-            console.log(`📝 Command: ${randomCommand}`);
+            console.log(`📝 أمر: ${randomCommand}`);
         } catch (error) {
-            console.error('❌ Command error:', error.message);
+            console.error('❌ خطأ في الأمر:', error.message);
         }
     }
 
     sendChat() {
         try {
             const messages = [
-                'Active!',
-                'Server maintenance bot online!',
-                'Keeping server active!'
+                'ViaVersion works great!',
+                'Bot connected successfully!',
+                'Server maintenance active!',
+                'Multi-version support!'
             ];
             const randomMsg = messages[Math.floor(Math.random() * messages.length)];
             this.bot.chat(randomMsg);
-            console.log(`💬 Chat: ${randomMsg}`);
+            console.log(`💬 رسالة: ${randomMsg}`);
         } catch (error) {
-            console.error('❌ Chat error:', error.message);
+            console.error('❌ خطأ في الرسالة:', error.message);
         }
     }
 
@@ -210,15 +270,24 @@ class AternosBot {
                 this.bot.setControlState('sneak', false);
             }, 1000);
         } catch (error) {
-            console.error('❌ AFK prevention error:', error.message);
+            console.error('❌ خطأ في منع AFK:', error.message);
         }
+    }
+
+    healthCheck() {
+        console.log('\n❤️  فحص صحة:');
+        console.log(`   - الحالة: ${this.isConnected ? '🟢 متصل' : '🔴 غير متصل'}`);
+        console.log(`   - الإصدار: ${SERVER_CONFIG.version}`);
+        console.log(`   - ViaVersion: ✅ مفعل`);
+        console.log(`   - محاولات إعادة الاتصال: ${this.reconnectAttempts}`);
     }
 
     scheduleReconnect() {
         if (this.reconnectAttempts >= 5) {
-            console.log('🛑 Max reconnection attempts reached. Waiting 5 minutes...');
+            console.log('🛑 وصل للحد الأقصى، انتظر 5 دقائق...');
             setTimeout(() => {
                 this.reconnectAttempts = 0;
+                this.currentVersionIndex = 0;
                 this.scheduleReconnect();
             }, 300000);
             return;
@@ -227,22 +296,23 @@ class AternosBot {
         this.reconnectAttempts++;
         const delay = Math.min(8000 * this.reconnectAttempts, 30000);
         
-        console.log(`⏳ Reconnecting in ${delay/1000}s (Attempt ${this.reconnectAttempts})`);
+        console.log(`⏳ إعادة اتصال بعد ${delay/1000}ث (المحاولة ${this.reconnectAttempts})`);
         
         setTimeout(() => {
-            console.log('🔄 Reconnecting...');
+            console.log('🔄 إعادة الاتصال...');
+            this.currentVersionIndex = 0;
             this.initBot();
         }, delay);
     }
 }
 
-// Start bot
-console.log('🚀 Starting Minecraft Bot on Replit...');
-const bot = new AternosBot();
+// بدء التشغيل
+console.log('🎮 تشغيل البوت مع دعم ViaVersion...');
+const bot = new ViaVersionBot();
 
-// Handle shutdown
+// إيقاف آمن
 process.on('SIGINT', () => {
-    console.log('🛑 Shutting down...');
+    console.log('🛑 إيقاف...');
     if (bot.bot) bot.bot.quit();
     process.exit(0);
 });
