@@ -1,19 +1,24 @@
-# Minecraft Aternos Bot - إصدار 1.21.8
+# Aternos Minecraft Bot for Replit
 
-بوت متقدم للحفاظ على نشاط سيرفر Aternos ومنع توقفه التلقائي.
+Advanced Minecraft bot that maintains your Aternos server activity 24/7.
 
-## 🚀 المميزات
+## Features
+- 🤖 Auto-connects to Aternos server
+- 🚶 Natural player movements
+- 📡 Uptime ping system
+- 🔄 Auto-reconnect
+- 🌐 Web monitoring interface
 
-- ✅ دعم إصدار ماينكرافت 1.21.8
-- 🔄 نظام إعادة اتصال ذكي
-- 📡 نظام Ping لمنع توقف السيرفر على Railway
-- 🎮 حركات تلقائية لمنع الخروج AFK
-- 🌐 واجهة ويب للمراقبة
-- 📊 سجلات مفصلة
+## Setup
+1. Fork this repl
+2. The bot will auto-start
+3. Monitor at your repl URL
 
-## 📦 التثبيت
+## Configuration
+Edit `SERVER_CONFIG` in `bot.js`:
+- Server IP
+- Bot username
+- Server version
 
-1. استنسخ المشروع:
-```bash
-git clone https://github.com/username/minecraft-aternos-bot.git
-cd minecraft-aternos-bot
+## Monitoring
+Visit your repl URL to see bot status.
