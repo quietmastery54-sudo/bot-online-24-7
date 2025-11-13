@@ -1,7 +1,7 @@
 {
-  "name": "advanced-aternos-bot",
+  "name": "aternos-bot-replit",
   "version": "1.0.0",
-  "description": "Advanced Minecraft Bot for Aternos Server with Natural Movements and Uptime Ping",
+  "description": "Advanced Minecraft Bot for Aternos on Replit",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -19,9 +19,7 @@
     "minecraft",
     "bot",
     "aternos",
-    "1.21.8",
-    "keepalive",
-    "uptime"
+    "replit"
   ],
   "author": "Your Name",
   "license": "MIT",
