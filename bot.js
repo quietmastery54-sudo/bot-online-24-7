@@ -3,120 +3,243 @@ const express = require('express');
 
 console.log('🚀 Starting Minecraft Bot for Aternos...');
 
-// إعدادات السيرفر
+// إعدادات السيرفر - تم التحديث للإصدار 1.21.4
 const config = {
     host: 'server5498.aternos.me',
     port: 19306,
-    username: 'ServerKeeper',
-    version: '1.21.8',
+    username: 'ServerKeeper_' + Math.floor(Math.random() * 1000), // اسم عشوائي لتجنب التكرار
+    version: '1.21.4', // ✅ الإصدار المدعوم
     auth: 'offline'
 };
+
+let bot = null;
+let isConnected = false;
 
 // إنشاء البوت
 function createBot() {
     try {
-        const bot = mineflayer.createBot(config);
+        console.log(`🤖 Attempting connection to ${config.host}:${config.port}`);
+        console.log(`📋 Using version: ${config.version}`);
+        console.log(`👤 Bot username: ${config.username}`);
+        
+        bot = mineflayer.createBot(config);
         
         bot.on('login', () => {
-            console.log('✅ Connected to Aternos server!');
-            console.log('🎮 Bot is now active and moving...');
+            console.log('✅ Successfully connected to Aternos server!');
+            console.log('🎮 Bot is now active and maintaining server...');
+            isConnected = true;
         });
         
         bot.on('error', (err) => {
-            console.log('❌ Connection error:', err.message);
+            console.log('❌ Bot error:', err.message);
+            isConnected = false;
         });
         
         bot.on('end', () => {
-            console.log('🔌 Disconnected, reconnecting in 10 seconds...');
-            setTimeout(createBot, 10000);
+            console.log('🔌 Disconnected from server');
+            isConnected = false;
+            console.log('🔄 Reconnecting in 15 seconds...');
+            setTimeout(createBot, 15000);
         });
         
         bot.on('spawn', () => {
             console.log('📍 Bot spawned in world');
+            isConnected = true;
             
-            // حركات منتظمة كل 20 ثانية
+            // نظام الحركة المنتظمة كل 25 ثانية
             setInterval(() => {
-                if (bot.entity) {
-                    // حركة عشوائية
-                    const moves = ['forward', 'back', 'left', 'right', 'jump'];
-                    const move = moves[Math.floor(Math.random() * moves.length)];
-                    
-                    bot.setControlState(move, true);
-                    setTimeout(() => {
-                        bot.setControlState(move, false);
-                    }, 800);
-                    
-                    // تحريك الكاميرا
-                    bot.look(Math.random() * Math.PI * 2 - Math.PI, Math.random() * 0.5 - 0.25, true);
-                    
-                    console.log(`🚶 Movement: ${move}`);
+                if (bot.entity && isConnected) {
+                    performMovement();
                 }
-            }, 20000);
+            }, 25000);
             
-            // أوامر كل دقيقتين
+            // نظام الأوامر كل 90 ثانية
             setInterval(() => {
-                bot.chat('/list');
-                console.log('📝 Sent command: /list');
+                if (isConnected) {
+                    sendCommand();
+                }
+            }, 90000);
+            
+            // نظام الرسائل كل دقيقتين
+            setInterval(() => {
+                if (isConnected) {
+                    sendChat();
+                }
             }, 120000);
             
-            // رسائل شات كل 3 دقائق
+            // نظام منع AFK كل 40 ثانية
             setInterval(() => {
-                const messages = ['Active!', 'Server maintenance!', 'All good!'];
-                const msg = messages[Math.floor(Math.random() * messages.length)];
-                bot.chat(msg);
-                console.log(`💬 Chat: ${msg}`);
-            }, 180000);
+                if (isConnected) {
+                    preventAFK();
+                }
+            }, 40000);
         });
         
         bot.on('message', (message) => {
-            console.log(`💬 ${message.toString()}`);
+            const msg = message.toString();
+            if (!msg.includes(config.username)) {
+                console.log(`💬 ${msg}`);
+            }
         });
         
-        return bot;
+        bot.on('kicked', (reason) => {
+            console.log(`🚫 Kicked from server: ${reason}`);
+            isConnected = false;
+        });
+        
     } catch (error) {
-        console.log('❌ Bot creation failed:', error.message);
-        setTimeout(createBot, 10000);
+        console.log('❌ Failed to create bot:', error.message);
+        console.log('🔄 Retrying in 20 seconds...');
+        setTimeout(createBot, 20000);
     }
 }
 
-// إنشاء خادم ويب بسيط للـ Ping
+// نظام الحركة
+function performMovement() {
+    try {
+        const movements = ['forward', 'back', 'left', 'right', 'jump', 'sneak'];
+        const move = movements[Math.floor(Math.random() * movements.length)];
+        const duration = 600 + Math.random() * 800;
+        
+        bot.setControlState(move, true);
+        setTimeout(() => {
+            bot.setControlState(move, false);
+        }, duration);
+        
+        // تحريك الكاميرا بشكل عشوائي
+        bot.look(
+            Math.random() * Math.PI * 2 - Math.PI,
+            Math.random() * 0.4 - 0.2,
+            true
+        );
+        
+        console.log(`🚶 Movement: ${move} for ${Math.round(duration)}ms`);
+        
+    } catch (error) {
+        console.log('❌ Movement error:', error.message);
+    }
+}
+
+// نظام الأوامر
+function sendCommand() {
+    try {
+        const commands = ['/list', '/time query daytime', '/gamerule doDaylightCycle true'];
+        const command = commands[Math.floor(Math.random() * commands.length)];
+        bot.chat(command);
+        console.log(`📝 Command: ${command}`);
+    } catch (error) {
+        console.log('❌ Command error:', error.message);
+    }
+}
+
+// نظام الرسائل
+function sendChat() {
+    try {
+        const messages = [
+            'Server maintenance active!',
+            'Keeping server online!',
+            'Bot is working!',
+            'All systems operational!',
+            'Maintaining server activity!'
+        ];
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        bot.chat(message);
+        console.log(`💬 Chat: ${message}`);
+    } catch (error) {
+        console.log('❌ Chat error:', error.message);
+    }
+}
+
+// نظام منع AFK
+function preventAFK() {
+    try {
+        bot.setControlState('sneak', true);
+        setTimeout(() => {
+            bot.setControlState('sneak', false);
+        }, 1000);
+        console.log('🔄 AFK prevention activated');
+    } catch (error) {
+        console.log('❌ AFK prevention error:', error.message);
+    }
+}
+
+// إنشاء خادم ويب للـ Ping والمراقبة
 const app = express();
+
 app.get('/', (req, res) => {
-    res.send('Minecraft Bot is Running! 🎮');
+    res.json({
+        status: 'Minecraft Bot Active',
+        server: config.host,
+        version: config.version,
+        connected: isConnected,
+        username: config.username,
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.get('/ping', (req, res) => {
-    res.json({ status: 'active', time: new Date().toISOString() });
+    res.json({ 
+        status: 'active', 
+        bot_connected: isConnected,
+        timestamp: new Date().toISOString() 
+    });
+});
+
+app.get('/status', (req, res) => {
+    res.json({
+        bot_status: isConnected ? 'connected' : 'disconnected',
+        server: `${config.host}:${config.port}`,
+        version: config.version,
+        uptime: process.uptime()
+    });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🌐 Web server running on port ${PORT}`);
     console.log(`📊 Monitor: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+    console.log('🔗 URLs:');
+    console.log(`   - Status: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/`);
+    console.log(`   - Ping: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/ping`);
 });
 
-// Ping ذاتي كل 5 دقائق
+// نظام Uptime Ping الذاتي كل 4 دقائق
 setInterval(() => {
-    const req = require('http').request({
+    const http = require('http');
+    const options = {
         hostname: 'localhost',
         port: PORT,
         path: '/ping',
-        method: 'GET'
-    }, () => {
-        console.log('✅ Self-ping successful');
+        method: 'GET',
+        timeout: 10000
+    };
+
+    const req = http.request(options, (res) => {
+        console.log('✅ Self-ping successful - ' + new Date().toLocaleTimeString());
     });
     
-    req.on('error', () => {
-        console.log('⚠️  Self-ping failed');
+    req.on('error', (err) => {
+        console.log('⚠️  Self-ping failed: ' + err.message);
+    });
+    
+    req.on('timeout', () => {
+        console.log('⏰ Self-ping timeout');
+        req.destroy();
     });
     
     req.end();
-}, 300000);
+}, 240000); // كل 4 دقائق
 
-// بدء البوت
-console.log('🤖 Creating Minecraft bot...');
-createBot();
+// بدء البوت بعد 3 ثواني
+setTimeout(() => {
+    console.log('🎯 Starting bot connection...');
+    createBot();
+}, 3000);
 
-console.log('🎯 Bot should connect shortly...');
-console.log('📋 Server: server5498.aternos.me:19306');
-console.log('⚡ Version: 1.21.8');
+// معلومات التشغيل
+console.log('\n✨ Bot Configuration:');
+console.log(`   - Server: ${config.host}:${config.port}`);
+console.log(`   - Version: ${config.version} ✅`);
+console.log(`   - Username: ${config.username}`);
+console.log(`   - Web Port: ${PORT}`);
+console.log('⏳ Initializing...');
