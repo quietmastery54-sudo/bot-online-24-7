@@ -1,29 +1,17 @@
 {
-  "name": "aternos-bot-replit",
+  "name": "aternos-bot",
   "version": "1.0.0",
-  "description": "Advanced Minecraft Bot for Aternos on Replit",
+  "description": "Minecraft Bot for Aternos Server",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "dev": "node bot.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.0",
-    "mineflayer-pathfinder": "^2.4.3",
     "express": "^4.18.2"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "keywords": [
-    "minecraft",
-    "bot",
-    "aternos",
-    "replit"
-  ],
+  "keywords": ["minecraft", "bot", "aternos"],
   "author": "Your Name",
-  "license": "MIT",
-  "engines": {
-    "node": ">=16.0.0"
-  }
+  "license": "MIT"
 }
